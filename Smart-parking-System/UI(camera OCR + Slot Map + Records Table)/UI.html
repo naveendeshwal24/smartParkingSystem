@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Parking System</title>
+
+  <!-- Firebase SDK — core app module required before any Firebase service -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <!-- Firebase Realtime Database — used to store/read parking records live -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <!-- Tesseract.js — browser-based OCR engine for reading license plates from camera feed -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
+
+  <!-- Syne: UI headings font | JetBrains Mono: monospace font for plate numbers & stats -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet" />
+
+  <!-- Tabler Icons — icon library used throughout the UI (car, parking, camera, etc.) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" />
+  <link rel="stylesheet" href="UI.css"> <!-- Main stylesheet for the entire UI -->
+
+</head>
+
+<body>
+
+  <div class="page">
+
+    <!-- ── Header ──
+       Logo mark + app title on the left; "SYSTEM ONLINE" live badge on the right -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo-mark"><i class="ti ti-parking"></i></div>
+        <div>
+          <h1>Smart Parking System</h1>
+          <p>ANPR · Real-time · Automated</p>
+        </div>
+      </div>
+      <div class="system-status">
+        <span class="sys-dot"></span>
+        SYSTEM ONLINE
+      </div>
+    </header>
+
+    <!-- ── Stats Row ──
+       Three cards updated live from Firebase: Total / Available / Occupied -->
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-icon blue"><i class="ti ti-layout-grid"></i></div>
+        <div class="stat-info">
+          <div class="num blue" id="stat-total">20</div> <!-- Fixed: always 20 -->
+          <div class="lbl">Total Slots</div>
+        </div>
+      </div>
+      <div class="stat">
+
+        <div id="popup-icon" class="stat-icon green"><i class="ti ti-check"></i></div>
+
+        <div class="stat-info">
+          <div class="num green" id="stat-free">20</div> <!-- Updated: TOTAL_SLOTS minus occupied -->
+          <div class="lbl">Available</div>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon red"><i class="ti ti-car"></i></div>
+        <div class="stat-info">
+          <div class="num red" id="stat-occ">0</div> <!-- Updated: count of pending-payment slots -->
+          <div class="lbl">Occupied</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Main Grid ──
+       Left: live camera feed with OCR scanner + manual entry fallback
+       Right: visual slot map showing free/occupied status -->
+    <div class="main-grid">
+
+      <!-- Camera Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <i class="ti ti-camera"></i> Live Camera Feed
+        </div>
+        <div class="panel-body">
+
+          <!-- Video element with scan overlay — OCR reads from this stream -->
+          <div class="video-wrap">
+            <video id="video" autoplay playsinline muted></video>
+            <div class="scan-overlay">
+              <div class="scan-line"></div> <!-- Animated blue sweep line (full frame) -->
+              <div class="corner tl"></div> <!-- Top-left bracket corner -->
+              <div class="corner tr"></div> <!-- Top-right bracket corner -->
+              <div class="corner bl"></div> <!-- Bottom-left bracket corner -->
+              <div class="corner br"></div> <!-- Bottom-right bracket corner -->
+            </div>
+            <!-- Dynamic label updated by setStatus() to reflect current scan state -->
+            <div class="cam-overlay-label" id="cam-label">READY TO SCAN</div>
+          </div>
+
+          <!-- Status pill below camera — color and text updated dynamically by setStatus() -->
+          <div class="status-row">
+            <span class="status-pill blue" id="status-pill">
+              <span class="pulse-dot"></span>
+              <span id="status-text">Enter plate number below</span>
+            </span>
+          </div>
+
+          <!-- Manual plate entry — operator can type plate if OCR doesn't detect it -->
+          <div class="manual-entry">
+            <input class="plate-input" id="plateInput" type="text" maxlength="15" placeholder="e.g. MH12AB1234"
+              autocomplete="off" spellcheck="false" />
+            <!-- Calls handleManualRegister() on click; also triggered by Enter key -->
+            <button class="btn-register" id="registerBtn" onclick="handleManualRegister()">
+              <i class="ti ti-plus"></i> Register
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Slot Map Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <i class="ti ti-map-2"></i> Slot Map
+        </div>
+        <div class="panel-body">
+          <!-- 20 slot cells rendered by renderSlots() and updated on every Firebase change -->
+          <div class="slots-grid" id="slots-grid"></div>
+          <div class="slots-legend">
+            <div class="legend-item"><span class="legend-dot free"></span> Available</div>
+            <div class="legend-item"><span class="legend-dot occupied"></span> Occupied</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Records Table ──
+       All parking records from Firebase rendered as rows; refreshes on every DB change -->
+    <div class="table-panel">
+      <div class="table-top">
+        <div class="table-title">
+          <i class="ti ti-database"></i> Parking Records
+        </div>
+        <div class="live-tag">
+          <div class="dot"></div> Live
+        </div>
+      </div>
+      <div style="overflow-x: auto;"> <!-- Horizontal scroll on narrow screens -->
+        <table>
+          <thead>
+            <tr>
+              <th>Plate Number</th>
+              <th>Slot</th>
+              <th>Status</th>
+              <th>Payment</th>
+              <th>Entry Time</th>
+            </tr>
+          </thead>
+          <!-- Populated dynamically by the Firebase .on('value') listener -->
+          <tbody id="carTable">
+            <tr>
+              <td colspan="5">
+                <div class="empty-state">
+                  <i class="ti ti-car-off"></i>
+                  <p>No vehicles parked yet</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Confirmation Modal ──
+     Shown after a plate is successfully registered — displays plate + assigned slot -->
+  <div class="modal-bg" id="popup">
+    <div class="modal-box">
+      <div class="modal-check"><i class="ti ti-check"></i></div>
+
+      <!-- <h3>Vehicle Registered</h3> -->
+
+      <h2 id="popup-title">Vehicle Registered</h2>
+      <p id="popup-subtitle">Slot assigned successfully</p>
+
+      <!-- <p class="sub">Slot assigned successfully</p> -->
+      <div class="modal-data-row">
+        <!-- Plate cell: populated by showPopup(plate, slot) -->
+        <div class="modal-data-cell">
+          <div class="val" id="carNumber">—</div>
+          <div class="lbl">Plate</div>
+        </div>
+        <!-- Slot cell: larger font since slot number is always short (1-2 digits) -->
+        <div class="modal-data-cell slot-cell">
+          <div class="val" id="slotNumber">—</div>
+          <div class="lbl">Slot No.</div>
+        </div>
+      </div>
+      <!-- Closes modal and restarts camera scanner for next vehicle -->
+      <button class="btn-confirm" onclick="closePopup()">Confirm &amp; Continue</button>
+    </div>
+  </div>
+  <script src="UI.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gate Scanner - Live Status</title>
+    <style>
+        /* Base page layout — dark theme with centered content */
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; text-align: center; padding: 20px; margin: 0; }
+
+        /* Live camera feed — max width capped at 450px, glowing blue border for visual emphasis */
+        #video { width: 100%; max-width: 450px; border: 4px solid #1a73e8; border-radius: 20px; box-shadow: 0 0 20px rgba(26, 115, 232, 0.5); }
+
+        /* Card container below the camera — holds status text and plate number */
+        .status-card { background: #1e1e1e; padding: 20px; border-radius: 15px; margin-top: 20px; border: 1px solid #333; }
+
+        /* Status line — shows current gate state (e.g. "Scanning", "Authorized Entry") */
+        #status { font-size: 1.4rem; font-weight: bold; margin-bottom: 10px; transition: 0.3s; }
+
+        /* Plate number display — large yellow bold text for high visibility */
+        #car-info { font-size: 1.8rem; color: #ffc107; font-weight: 900; }
+
+        /* CSS class applied to #status when a valid plate is detected — green glow effect */
+        .detecting { color: #00e676; text-shadow: 0 0 10px rgba(0,230,118,0.5); }
+    </style>
+</head>
+<body>
+
+    <h2>🚗 AI Gate Node (Live)</h2>
+
+    <!-- Live camera preview — visual only, actual OCR is done by auto_scanner.py on the backend -->
+    <video id="video" autoplay playsinline muted></video>
+
+    <!-- Status card — synced in real-time with Firebase data pushed by Python scanner -->
+    <div class="status-card">
+        <div id="status">Waiting for Python Scanner...</div>  <!-- Default idle message -->
+        <div id="car-info">-- SCANNING --</div>               <!-- Plate number appears here on detection -->
+        <p style="color: gray; font-size: 0.8rem;">Real-time sync with auto_scanner.py</p>
+    </div>
+
+    <!-- Firebase SDK — App core and Realtime Database modules -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        // ── Firebase Configuration ──
+        // Credentials for connecting to this project's Realtime Database
+        const firebaseConfig = {
+            apiKey: "AIzaSyCImmlGPsLIMyTGxpPjI7SC80wNCA9T-Ao",
+            databaseURL: "https://smartparkingsystembyabhay-default-rtdb.firebaseio.com/",
+            projectId: "smartparkingsystembyabhay",
+        };
+        firebase.initializeApp(firebaseConfig);  // Initialize Firebase with the above config
+        const db = firebase.database();           // Get a reference to the Realtime Database
+                                                                                                                         
+        // ── Camera Preview ──
+        // Starts the device camera and pipes the stream into the <video> element
+        // This feed is purely for visual display — no OCR or processing happens here
+        // All plate detection is handled externally by auto_scanner.py
+        async function startCamera() {
+            try {
+                // Request rear camera (environment) for mobile devices; falls back to any camera
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                document.getElementById('video').srcObject = stream;
+            } catch (err) { console.log("Camera Preview Error: " + err); }  // Log error silently — non-critical
+        }
+
+        // ── Firebase Realtime Listener ──
+        // Watches the last entry written to "parking/cars" by auto_scanner.py
+        // Triggers instantly whenever Python pushes a new detected plate to Firebase
+        db.ref("parking/cars").limitToLast(1).on("value", (snapshot) => {
+            snapshot.forEach((childSnapshot) => {
+                const data = childSnapshot.val();  // Extract the latest car entry object
+                const now = Date.now();            // Current timestamp in milliseconds
+
+                // ── Freshness Check ──
+                // Only react if this entry was written within the last 5 seconds
+                // Prevents re-triggering on old/stale data when page loads or reconnects
+                if (now - data.entryTime < 5000) {
+
+                    // ── Authorized Entry Display ──
+                    // Update status text and apply green glow class to signal successful detection
+                    document.getElementById('status').innerText = "AUTHORIZED ENTRY";
+                    document.getElementById('status').className = "detecting";
+
+                    // Show the detected plate number (pushed by Python scanner via Firebase)
+                    document.getElementById('car-info').innerText = data.carNo;
+
+                    // ── Auto Reset ──
+                    // After 4 seconds, revert UI back to idle/scanning state
+                    // Keeps the display ready for the next vehicle detection
+                    setTimeout(() => {
+                        document.getElementById('status').innerText = "Scanning for License Plates...";
+                        document.getElementById('status').className = "";           // Remove green glow
+                        document.getElementById('car-info').innerText = "-- SCANNING --";  // Reset plate display
+                    }, 4000);
+                }
+            });
+        });
+
+        startCamera();  // Start camera preview on page load
+    </script>
+</body>
+</html>

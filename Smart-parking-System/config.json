@@ -1,0 +1,27 @@
+{
+  "arduino": {
+    "com_port": "COM4",
+    "baud_rate": 9600,
+    "timeout": 1,
+    "auto_detect": true
+  },
+  "flask": {
+    "host": "localhost",
+    "port": 5000,
+    "debug": false
+  },
+  "firebase": {
+    "service_account_key": "smartparking.json",
+    "database_url": "https://smartparkingsystembyabhay-default-rtdb.firebaseio.com/",
+    "project_id": "smartparkingsystembyabhay"
+  },
+  "camera": {
+    "index": 0,
+    "resolution": [1280, 720]
+  },
+  "system": {
+    "auto_start_scanner": true,
+    "auto_start_bridge": true,
+    "gate_timeout_seconds": 5
+  }
+}

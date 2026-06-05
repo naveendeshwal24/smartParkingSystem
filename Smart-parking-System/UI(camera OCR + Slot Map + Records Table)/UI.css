@@ -1,0 +1,695 @@
+  /* Universal reset — removes default browser spacing and enforces border-box sizing */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── Design Tokens ──
+     Central color and font variables used throughout — change here to retheme the entire UI */
+  :root {
+    --bg:        #0a0c10;                    /* Page background — near black */
+    --surface:   #0f1117;                    /* Slightly lighter surface (table headers, inputs) */
+    --card:      #13161f;                    /* Card/panel background */
+    --border:    rgba(255,255,255,0.06);     /* Subtle border for panels */
+    --border-hi: rgba(255,255,255,0.12);     /* Brighter border for hover/focus states */
+    --text:      #e8eaf0;                    /* Primary text color */
+    --muted:     #6b7280;                    /* Secondary/label text */
+    --accent:    #3b82f6;                    /* Blue — primary interactive color */
+    --accent-glow: rgba(59,130,246,0.18);    /* Translucent blue for backgrounds/glows */
+    --green:     #22c55e;                    /* Available / success color */
+    --green-bg:  rgba(34,197,94,0.12);       /* Translucent green background */
+    --red:       #ef4444;                    /* Occupied / error color */
+    --red-bg:    rgba(239,68,68,0.12);       /* Translucent red background */
+    --amber:     #f59e0b;                    /* Warning / pending color */
+    --amber-bg:  rgba(245,158,11,0.12);      /* Translucent amber background */
+    --font-head: 'Syne', sans-serif;         /* Headings and UI labels */
+    --font-mono: 'JetBrains Mono', monospace;/* Numbers, plates, codes */
+  }
+
+  html { scroll-behavior: smooth; }  /* Smooth anchor scrolling */
+
+  body {
+    font-family: var(--font-head);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;  /* Prevent horizontal scroll on narrow screens */
+  }
+
+  /* Subtle blue grid lines layered behind content — decorative tech aesthetic */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;  /* Clicks pass through to content below */
+    z-index: 0;
+  }
+
+  /* Radial blue glow at top center — adds depth to the dark background */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px; left: 50%;
+    transform: translateX(-50%);
+    width: 800px; height: 400px;
+    background: radial-gradient(ellipse, rgba(59,130,246,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Main content wrapper — centered, max-width constrained, above background layers */
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 2.5rem 4rem;
+  }
+
+  /* ─── Header ─── */
+  /* Top bar: logo + title on left, system status badge on right */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);  /* Separator line below header */
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  /* Parking icon box — blue glow square acting as the app logo */
+  .logo-mark {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    background: var(--accent-glow);
+    border: 1px solid rgba(59,130,246,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    color: var(--accent);
+    flex-shrink: 0;  /* Prevents logo from shrinking on narrow screens */
+  }
+
+  .header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+  .header p  { font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 1px; font-family: var(--font-mono); }
+
+  /* "SYSTEM ONLINE" pill badge — green to indicate all services are active */
+  .system-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--green-bg);
+    border: 1px solid rgba(34,197,94,0.2);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--green);
+    font-family: var(--font-mono);
+  }
+
+  /* Animated blinking dot — indicates live/active state */
+  .sys-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: blink 1.5s ease-in-out infinite;
+  }
+
+  /* Reusable blink animation — used by status dots and live indicators */
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  /* ─── Stats Row ─── */
+  /* 3-column grid showing Total / Available / Occupied slot counts */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: border-color 0.2s;
+  }
+
+  .stat:hover { border-color: var(--border-hi); }  /* Subtle highlight on hover */
+
+  /* Colored icon box inside each stat card */
+  .stat-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  /* Color variants for each stat icon */
+  .stat-icon.blue  { background: var(--accent-glow); color: var(--accent); }
+  .stat-icon.green { background: var(--green-bg);    color: var(--green); }
+  .stat-icon.red   { background: var(--red-bg);      color: var(--red); }
+
+  /* Large number shown in each stat card — updated live from Firebase */
+  .stat-info .num {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+    font-family: var(--font-mono);
+    letter-spacing: -0.02em;
+  }
+
+  .stat-info .num.blue  { color: var(--accent); }
+  .stat-info .num.green { color: var(--green); }
+  .stat-info .num.red   { color: var(--red); }
+
+  /* Small uppercase label below each number ("TOTAL SLOTS", "AVAILABLE", etc.) */
+  .stat-info .lbl {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 3px;
+  }
+
+  /* ─── Main Grid ─── */
+  /* Two-column layout: camera panel (narrow) + slot map (wide) */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1.9fr;  /* Camera ~37%, Slot map ~63% */
+    gap: 16px;
+    margin-bottom: 1.5rem;
+  }
+
+  /* Stack panels vertically on tablets and phones */
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: 1fr; }
+  }
+
+  /* Generic card panel — used for both camera and slot map sections */
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;  /* Clips child elements to rounded corners */
+  }
+
+  /* Panel title bar — icon + label in monospace uppercase */
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+
+  .panel-header i { font-size: 15px; }
+  .panel-body { padding: 16px 18px; }
+
+  /* ─── Camera Feed ─── */
+  /* Wrapper maintains 4:3 aspect ratio and clips the video + overlay elements */
+  .video-wrap {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;        /* Black fallback while camera loads */
+    aspect-ratio: 4/3;
+  }
+
+  /* Live video element — fills the wrapper, covers without distortion */
+  #video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    opacity: 0.9;
+  }
+
+  /* Transparent overlay layer that holds the scan line and corner markers */
+  .scan-overlay { position: absolute; inset: 0; pointer-events: none; }
+
+  /* Animated horizontal blue line sweeping top→bottom to visualize active scanning */
+  .scan-line {
+    position: absolute;
+    left: 0%; right: 0%;       /* Full width — covers 100% of camera frame */
+    height: 1.5px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: scanMove 2.8s ease-in-out infinite;
+    box-shadow: 0 0 10px rgba(59,130,246,0.6);
+  }
+
+  /* Scan line travels from top (0%) to bottom (100%) of the full camera frame */
+  @keyframes scanMove {
+    0%   { top: 0%;   opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  /* Blue corner bracket markers at each corner of the camera frame */
+  .corner {
+    position: absolute;
+    width: 18px; height: 18px;
+    border-color: var(--accent);
+    border-style: solid;
+    opacity: 0.7;
+  }
+
+  /* Each corner uses selective border-width to show only 2 sides (L-shape effect) */
+  .corner.tl { top: 0%;    left: 0%;   border-width: 2px 0 0 2px; border-radius: 2px 0 0 0; }
+  .corner.tr { top: 0%;    right: 0%;  border-width: 2px 2px 0 0; border-radius: 0 2px 0 0; }
+  .corner.bl { bottom: 0%; left: 0%;   border-width: 0 0 2px 2px; border-radius: 0 0 0 2px; }
+  .corner.br { bottom: 0%; right: 0%;  border-width: 0 2px 2px 0; border-radius: 0 0 2px 0; }
+
+  /* Text label at bottom center of camera showing current scan state */
+  .cam-overlay-label {
+    position: absolute;
+    bottom: 10px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.7);         /* Semi-transparent dark pill */
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    white-space: nowrap;                  /* Prevents label from wrapping */
+    border: 1px solid rgba(59,130,246,0.3);
+  }
+
+  /* Row below camera holding the status pill */
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  /* Colored pill showing current system state — color class swapped by setStatus() */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    border: 1px solid;
+    transition: all 0.3s;
+  }
+
+  /* Status pill color variants — applied dynamically via JS */
+  .status-pill.blue  { background: var(--accent-glow); color: var(--accent); border-color: rgba(59,130,246,0.3); }
+  .status-pill.green { background: var(--green-bg);    color: var(--green);  border-color: rgba(34,197,94,0.3); }
+  .status-pill.amber { background: var(--amber-bg);    color: var(--amber);  border-color: rgba(245,158,11,0.3); }
+  .status-pill.red   { background: var(--red-bg);      color: var(--red);    border-color: rgba(239,68,68,0.3); }
+
+  /* Blinking dot inside the status pill — inherits pill's text color */
+  .pulse-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: blink 1.5s ease-in-out infinite;
+  }
+
+  /* ─── Manual Entry ─── */
+  /* Fallback input row below camera — allows operator to type plate if OCR fails */
+  .manual-entry {
+    margin-top: 14px;
+    display: flex;
+    gap: 8px;
+  }
+
+  /* Plate number text input — auto-uppercased via JS, monospace for readability */
+  .plate-input {
+    flex: 1;                         /* Takes all available width beside the button */
+    padding: 9px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border-hi);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .plate-input::placeholder { color: var(--muted); text-transform: none; }
+  .plate-input:focus { border-color: var(--accent); }  /* Blue border when focused */
+
+  /* Register button beside the input — triggers manual plate registration */
+  .btn-register {
+    padding: 9px 16px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    white-space: nowrap;
+  }
+
+  .btn-register:hover    { opacity: 0.85; }
+  .btn-register:active   { transform: scale(0.97); }
+  .btn-register:disabled { opacity: 0.4; cursor: not-allowed; }  /* Disabled during async registration */
+
+  /* ─── Slot Map Grid ─── */
+  /* 10-column grid — each cell represents one of the 20 parking slots */
+  .slots-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 10px;
+    margin-bottom: 1rem;
+  }
+
+  /* Individual slot cell — switches between free/occupied classes based on Firebase data */
+  .slot {
+    aspect-ratio: 1;              /* Square cells regardless of container width */
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    border: 1px solid;
+    cursor: default;
+    transition: all 0.3s;
+    gap: 4px;
+  }
+
+  .slot i { font-size: 22px; }  /* Parking/car icon inside each slot cell */
+
+  /* Green styling — slot is available */
+  .slot.free     { background: var(--green-bg); border-color: rgba(34,197,94,0.25); color: var(--green); }
+  /* Red styling — slot is occupied by a vehicle */
+  .slot.occupied { background: var(--red-bg);   border-color: rgba(239,68,68,0.25);  color: var(--red); }
+
+  /* Lift effect on free slot hover; occupied slots only brighten border */
+  .slot.free:hover     { border-color: rgba(34,197,94,0.5); transform: translateY(-2px); }
+  .slot.occupied:hover { border-color: rgba(239,68,68,0.5); }
+
+  /* Legend below slot map explaining green = available, red = occupied */
+  .slots-legend { display: flex; gap: 16px; margin-top: 12px; }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .legend-dot          { width: 10px; height: 10px; border-radius: 3px; }
+  .legend-dot.free     { background: var(--green); }
+  .legend-dot.occupied { background: var(--red); }
+
+  /* ─── Records Table ─── */
+  /* Full-width panel below the main grid listing all parking records from Firebase */
+  .table-panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  /* Table header bar — title on left, "LIVE" badge on right */
+  .table-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .table-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+
+  /* Green "LIVE" pill with blinking dot — confirms table updates in real-time */
+  .live-tag {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--green-bg);
+    border: 1px solid rgba(34,197,94,0.2);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--green);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .live-tag .dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: blink 1.5s ease-in-out infinite;
+  }
+
+  /* Table styling — full width, no gaps between rows */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-family: var(--font-mono); }
+
+  thead th {
+    padding: 10px 20px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }  /* Subtle row highlight on hover */
+
+  td { padding: 11px 20px; }
+
+  /* Plate number chip — dark pill with car icon + plate text */
+  .plate-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-hi);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.05em;
+  }
+
+  /* Slot number chip — blue accent pill showing assigned slot number */
+  .slot-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--accent-glow);
+    border: 1px solid rgba(59,130,246,0.25);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  /* Generic badge — used for Status and Payment columns with color variants */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* Badge color variants based on vehicle/payment state */
+  .badge.parked  { background: var(--green-bg);    color: var(--green);  border-color: rgba(34,197,94,0.25); }
+  .badge.pending { background: var(--amber-bg);    color: var(--amber);  border-color: rgba(245,158,11,0.25); }
+  .badge.paid    { background: var(--accent-glow); color: var(--accent); border-color: rgba(59,130,246,0.25); }
+
+  .time-text { color: var(--muted); font-size: 12px; }  /* Entry time column — muted grey */
+
+  /* Shown when no vehicles are parked — centered icon + message */
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+  .empty-state i { font-size: 40px; display: block; margin-bottom: 10px; opacity: 0.3; }
+  .empty-state p { font-size: 13px; font-family: var(--font-mono); }
+
+  /* ─── Confirmation Modal ─── */
+  /* Full-screen blurred overlay — appears after successful plate registration */
+  .modal-bg {
+    display: none;              /* Hidden by default */
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(6px); /* Blurs the content behind the modal */
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-bg.open { display: flex; }  /* JS adds "open" class to show the modal */
+
+  /* Modal card — springs in with a bounce animation */
+  .modal-box {
+    background: var(--card);
+    border: 1px solid var(--border-hi);
+    border-radius: 20px;
+    padding: 2rem;
+    width: 360px;
+    max-width: 92vw;
+    text-align: center;
+    animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+
+  /* Scale-up bounce entry animation for the modal box */
+  @keyframes popIn {
+    from { transform: scale(0.85); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+  }
+
+  /* Green checkmark circle at the top of the modal — confirms successful registration */
+  .modal-check {
+    width: 62px; height: 62px;
+    border-radius: 50%;
+    background: var(--green-bg);
+    border: 2px solid rgba(34,197,94,0.3);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1.25rem;
+    color: var(--green);
+    font-size: 28px;
+    animation: checkPop 0.4s 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) both;  /* Delayed after modal appears */
+  }
+
+  /* Checkmark pops in slightly after the modal box itself */
+  @keyframes checkPop {
+    from { transform: scale(0); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+
+  .modal-box h3  { font-size: 20px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.02em; }
+  .modal-box .sub { font-size: 12px; color: var(--muted); font-family: var(--font-mono); margin-bottom: 1.25rem; }
+
+  /* Stacks plate and slot cells vertically — prevents slot box from overflowing on long plates */
+  .modal-data-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 1.25rem;
+  }
+
+  /* Individual data cell inside modal — dark surface with rounded border */
+  .modal-data-cell {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    text-align: center;
+  }
+
+  /* Plate value — smaller font with word-break so long plates wrap cleanly */
+  .modal-data-cell .val {
+    font-size: 18px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: var(--text);
+    letter-spacing: 0.05em;
+    word-break: break-all;  /* Wraps if plate is unusually long */
+    line-height: 1.3;
+  }
+
+  /* Slot number gets larger font — it's always 1-2 digits so no overflow risk */
+  .modal-data-cell.slot-cell .val { font-size: 28px; letter-spacing: 0; }
+
+  /* Small uppercase label below each value ("PLATE", "SLOT NO.") */
+  .modal-data-cell .lbl {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 4px;
+    font-family: var(--font-mono);
+  }
+
+  /* Confirm button — closes modal and restarts the camera scanner */
+  .btn-confirm {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+
+  .btn-confirm:hover  { opacity: 0.85; }
+  .btn-confirm:active { transform: scale(0.98); }
+
+  /* ─── Custom Scrollbar ─── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
+
+  /* Stack header elements vertically on very small screens */
+  @media (max-width: 480px) {
+    .header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .header h1 { font-size: 18px; }
+  }
